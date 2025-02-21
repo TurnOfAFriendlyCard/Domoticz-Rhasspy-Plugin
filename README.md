@@ -135,6 +135,7 @@ List is conform https://wiki.domoticz.com/Developing_a_Python_plugin#Available_D
 | Color Switch  |  | 💡 | 💡 |
 | Thermostat  |  | ✅ | 💡 |
 | General  |  | 💡 | 💡 |
+| General  | Text | ✅ | 💡 |
 | Light/Switch | Selector Switch | ✅ | 💡 |
 | Light/Switch | Switch | ✅ | ✅ |
 | Lux  |  | 💡 | ❌ |
@@ -142,3 +143,6 @@ List is conform https://wiki.domoticz.com/Developing_a_Python_plugin#Available_D
 | Usage  |  | 💡 | ❌ |
 | Air Quality |  | 💡 | ❌ |
 | P1 Smart Meter  |  | 💡 | ❌ |
+| Security  |  | 💡 | 💡 |
+| Camera  | Snapshot | 💡 | ❌ |
+| Scenes  |  | 💡 | 💡 |
