@@ -29,7 +29,7 @@ Based on an example the structure of sentences in Rhasspy relevant to Domoticz i
 Every intent that needs to be interpreted by Domoticz needs to start with `dz` succeeded by an API command for Domoticz, for instance `switchlight`. The intent text in the plugin
 is not case sensitive (everything will be converted to lowercase by the plugin).
 
-Currently supported API commands of Domoticz (see for details https://wiki.domoticz.com/Domoticz_API/JSON_URL's) and the appendix chapter at the end of this readme document:
+Currently supported API commands of Domoticz (see for details https://wiki.domoticz.com/Domoticz_API/JSON_URL's and the appendix chapter at the end of this readme document):
   1. [dzswitchlight] - So Domoticz type `Light/Switch`, update the state.
   2. [dzgetdevices] - So actual value of a Domoticz device, report the value.
 ### Sentences
