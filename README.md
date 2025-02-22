@@ -22,6 +22,7 @@ In German this would be:
 ## Prerequisites
 1. `Rhasspy 2.5 up and running`: See for more information https://rhasspy.readthedocs.io/en/latest/.
 2. `MQTT up and running`: for communication between Rhasspy and this plugin (vice versa).
+3. `Recent Domoticz`: supporting new API structures and extended plugin framework.
 
 ## Rhasspy Intents and Sentences
 Based on an example the structure of sentences in Rhasspy relevant to Domoticz is explained. First the intents are explained and next the sentences within the intents.
