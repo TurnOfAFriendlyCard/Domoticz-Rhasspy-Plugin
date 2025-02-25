@@ -1,7 +1,7 @@
-## Goal
-This plugin captures Rhasspy voice requests and processes these requests within Domoticz.
+# Goal
+This plugin captures Rhasspy voice requests and processes these requests in Domoticz and speaks feedback via Rhasspy.
 
-## Description
+# Description
 **_Put on the light_**, **_what is the state of the washing machine_** or **_put the heating to 18 degrees_**.
 These are requests that can be processed with all kind of voice assistants.
 This plugin takes care that a voice request is actually processed within Domoticz.
@@ -19,12 +19,13 @@ In German this would be:
 1. `Hey Jarvis, mach das Küchenlicht an`
 2. `Das Licht in der Küche ist an`
 
-## Prerequisites
-1. `Rhasspy 2.5 up and running`: See for more information https://rhasspy.readthedocs.io/en/latest/.
+# Prerequisites
+1. `Rhasspy 2.5 up and running`: See for more information https://rhasspy.readthedocs.io/en/latest/. 
 2. `MQTT up and running`: for communication between Rhasspy and this plugin (vice versa).
 3. `Recent Domoticz`: supporting new API structures and extended plugin framework.
 
-## Rhasspy Intents and Sentences
+# Rhasspy
+## Intents, Sentences and Slots
 Based on an example the structure of sentences in Rhasspy relevant to Domoticz is explained. First the intents are explained and next the sentences within the intents.
 ### Intents
 Every intent that needs to be interpreted by Domoticz needs to start with `dz` succeeded by an API command for Domoticz, for instance `switchlight`. The intent text in the plugin
@@ -88,9 +89,14 @@ Also placing the devicename in the slot is possible:
 The slot `domoticz/temperature` would look like this:
 
     (temperature outside | outside temperature | out temperature){device:Temperature Outside}
+## Typical Setup Rhasspy
+My current setup is `Base-Satellite` (Base Rhasspy under Docker on NAS and Satellite Rhasspy under Docker on RPi3).
+![Rhasspy](https://github.com/user-attachments/assets/e539f4a2-1ee0-424c-ab21-19f3d169fa83)
 
-## Domoticz
-### User variables
+![Base Master](https://github.com/user-attachments/assets/2269182f-0bbe-4f2e-aee6-e449b482d761)
+
+# Domoticz
+## User variables
 The device name to be supplied in the sentence or slot in Rhasspy should be the actual device name. One way to be flexible in Domoticz on device names is to define a user variable representing the device.
 
 User variables in Domoticz are defined in Setup, More options, User variables. Example is:
@@ -103,8 +109,8 @@ So `Outside Temperature` is the actual device name, but the variable `TempOut` c
 So you could stay independant of changing your device names in Domoticz and also having tp change your Rhasspy sentences and slots.
 I'm using user variables for devices (ao) in DzVents as well (so would look like this: `if (domoticz.devices(domoticz.variables('SensorGarageDoor').value).state == 'Open'`).
 
-## INSTALLATION
-### A. Plugin
+# INSTALLATION
+## A. Plugin
 1. Open a `PuTTY` session.
 2. In the session go to the `Plugin` folder of Domoticz.
 3. Download the plugin: `git clone https://github.com/TurnOfAFriendlyCard/Domoticz-Rhasspy-Plugin`
@@ -118,7 +124,7 @@ I'm using user variables for devices (ao) in DzVents as well (so would look like
 8. Install module deepl: `pip3 install deepl-translate`. This is required for translating Domoticz states and values into local language (so for instance `aus` in `off`).
 9. Restart Domoticz.
 
-### B. Domoticz
+## B. Domoticz
 1. In the hardware tab a new `type` will be available: `Rhasspy Voice Assistant`.
 2. Create the new hardware:
    - Enter a logical `name` (for instance `Rhasspy`).
@@ -131,7 +137,7 @@ I'm using user variables for devices (ao) in DzVents as well (so would look like
    - When required debug message can be shown in the Domoticz log (set required debuglevel from dropdown).
    - Press Add to complete the installation.
 
-### C. Rhasspy
+## C. Rhasspy
 1. The language used by Rhasspy needs to be communicated to the plugin. In Rhasspy go the Advanced menu, so the profile.json will be presented.
 2. Add to the intent section the text `"lang": "nl"` (replace the actual language used).
 3. The profile.json will look like next:
@@ -147,7 +153,7 @@ I'm using user variables for devices (ao) in DzVents as well (so would look like
   
 Enjoy your **Rhasspy Domoticz integration** 😁
 
-## Appendix - Device status details
+# Appendix - Device status details
 List is conform https://wiki.domoticz.com/Developing_a_Python_plugin#Available_Device_Types
 
 ✅ available in current version
