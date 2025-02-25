@@ -8,9 +8,9 @@
 # Python Plugin neOCampus      Author: Dr Thiebolt F.
 #
 """
-<plugin key="Rhasspy" name="Rhasspy Voice Assistant" author="marathon2010" version="1.0.141">
+<plugin key="Rhasspy" name="Rhasspy Voice Assistant" author="marathon2010" version="1.1.6">
     <description>
-        <h2>Rhasspy Voice Assistant - v1.0.141</h2>
+        <h2>Rhasspy Voice Assistant - v1.1.6</h2>
         This plugin integrates Rhasspy intents with Domoticz devices via MQTT and Domoticz API.<br/>
     </description>
     <params>
@@ -55,7 +55,7 @@ class BasePlugin:
     
     domoAPIbase       = "/json.htm?type=command&param="    # API domoticz basis
 
-#   what domoticz types and subtypes are validated to be processed.    
+    # what domoticz types and subtypes are validated to be processed.    
     domoTypesOK       = ["lighting 2", "temp", "setpoint", "general", "light/switch"]   # use lower characters
     domoSubTypesOK    = ["", "lacrosse tx3", "setpoint", "text", "switch"]              # use lower characters
     
@@ -148,8 +148,14 @@ class BasePlugin:
             return request_response
 
         def domoGetIDX(domoticz_device):
-            domoticz_result = domoRequest("devices_list")
             domoticz_idx = 0
+            # first try to translate the supplied device name to the value of a user variable
+            # so user variables names are logical device names and will containt the actual device names
+            domoticz_result = domoRequest("getuservariables")
+            if domoticz_result.ok and (domoticz_usrvar := searchJSON(f"result[?Name=='{domoticz_device}'].Value", domoticz_result.json())):
+                domoticz_device = domoticz_usrvar        
+            # determine the IDX of the devicename        
+            domoticz_result = domoRequest("devices_list")
             if domoticz_result.ok:    
                 domoticz_idx = searchJSON("result[?name=='" + domoticz_device + "'].idx", domoticz_result.json())
                 Domoticz.Debug("Device IDX <" + str(domoticz_idx) + "> (" + str(domoticz_device) + ")")
@@ -169,14 +175,15 @@ class BasePlugin:
 
         def processDomoticz (apiCommand, payload):
             Domoticz.Status("Domoticz API command " + apiCommand)
-#           capture the device delivered from Rhasspy and validate it exists in Domoticz by retrieving the IDX.
-            domoticz_device = searchJSON("slots[?entity=='device'].value.value", payload)
+            # capture the device delivered from Rhasspy and validate it exists in Domoticz by retrieving the IDX.
+#### INTRODUCING SLOTS IN RHASSPY, former retrieval:            domoticz_device = searchJSON("slots[?entity=='device'].value.value", payload)
+            domoticz_device = searchJSON("slots[0].value.value", payload)
             domoticz_IDX = domoGetIDX(domoticz_device)
             if domoticz_IDX == "":
                 Domoticz.Error("Device " + domoticz_device + " not found")
                 return
 
-#           validate type and subtype can already be processed by the plugin.
+            # validate type and subtype can already be processed by the plugin.
             domoticz_result = domoRequest("getdevices&rid=" + domoticz_IDX)
             if not domoticz_result.ok:
                 Domoticz.Error("Device details " + domoticz_device + " not found")
@@ -196,8 +203,8 @@ class BasePlugin:
                     Domoticz.Error("Device update " + domoticz_device + " failed")
                     return
                 
-#           perform always a getdevices to confirm the actual status of the device and speak out
-#           and would be that all intents will result in a getdevices request whatever intent is defined.
+            # perform always a getdevices to confirm the actual status of the device and speak out
+            # and would be that all intents will result in a getdevices request whatever intent is defined.
             domoticz_result = domoRequest("getdevices&rid=" + domoticz_IDX)
             if not domoticz_result.ok:
                 Domoticz.Error("Device actual details " + domoticz_device + " not found")
@@ -205,7 +212,7 @@ class BasePlugin:
 
             toLanguage = searchJSON("lang", payload)
             domoticz_value = searchJSON("result[].Data", domoticz_result.json())
-#           adjust the captured data so it can be spoken properly
+            # adjust the captured data so it can be spoken properly
             if (domoticz_type == "temp" or domoticz_type == "setpoint"):
                 domoticz_value = domoticz_value.strip("C").replace(".", " point ") + " degrees"
             if (domoticz_type == "light/switch" and domoticz_subtype == "selector switch"):
