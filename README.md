@@ -68,6 +68,40 @@ Next would be a valid setup within Rhasspy of the sentence.ini file:
     wie ist der Status der Küchenlampe{device:Licht}(:){speakresponse:`Die Lampe in der Küche ist`}
 
 In this case the intent [GetTime] will not be processed in the plugin (as it lacks the prefix `dz`).
+### Slots
+It is possible to process slots as spoken device names defined in Rhasspy. The sentence.ini file in Rhasspy would like this:
+
+    [dzGetDevices]
+
+    what is [the] $domoticz/temperature{device:Temperature Outside}(:){speakresponse:The temperature outside is}
+
+The slot `domoticz/temperature` would look like this:
+
+    (temperature outside | outside temperature | out temperature)
+
+Also placing the devicename in the slot is possible:
+
+    [dzGetDevices]
+
+    what is [the] $domoticz/temperature(:){speakresponse:The temperature outside is}
+
+The slot `domoticz/temperature` would look like this:
+
+    (temperature outside | outside temperature | out temperature){device:Temperature Outside}
+
+## Domoticz
+### User variables
+The device name to be supplied in the sentence or slot in Rhasspy should be the actual device name. One way to be flexible in Domoticz on device names is to define a user variable representing the device.
+
+User variables in Domoticz are defined in Setup, More options, User variables. Example is:
+
+- Variable name: 	TempOut
+- Variable type: 	String
+- Variable value: Outside Temperature	
+
+So `Outside Temperature` is the actual device name, but the variable `TempOut` can be used in Rhasspy and Domoticz.
+So you could stay independant of changing your device names in Domoticz and also having tp change your Rhasspy sentences and slots.
+I'm using user variables for devices (ao) in DzVents as well (so would look like this: `if (domoticz.devices(domoticz.variables('SensorGarageDoor').value).state == 'Open'`).
 
 ## INSTALLATION
 ### A. Plugin
