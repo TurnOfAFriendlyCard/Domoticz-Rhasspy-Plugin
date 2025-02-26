@@ -109,6 +109,8 @@ So `Outside Temperature` is the actual device name, but the variable `TempOut` c
 So you could stay independant of changing your device names in Domoticz and also having tp change your Rhasspy sentences and slots.
 I'm using user variables for devices (ao) in DzVents as well (so would look like this: `if (domoticz.devices(domoticz.variables('SensorGarageDoor').value).state == 'Open'`).
 
+Bear in mind, this is `optional` functionality. You can still use the actual device name in the sentence.ini. So two options.
+
 # INSTALLATION
 ## A. Plugin
 1. Open a `PuTTY` session.
