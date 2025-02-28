@@ -1,3 +1,10 @@
+# Plugin remarks
+`Reply from Domoticz moderator: This plugin does not make an interface with hardware, it interfaces with Domoticz and a voice assitant application.
+I am not saying it will not work as a plugin but the better way would be to have it as a separate python script/service installed somewhere on your system and so run it outside Domoticz.`
+See https://forum.domoticz.com/viewtopic.php?p=324019#p324019
+
+I've started to rework and will publish new approach on short notice.
+
 # Goal
 This plugin captures Rhasspy voice requests and processes these requests in Domoticz and speaks feedback via Rhasspy.
 
