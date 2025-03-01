@@ -1,10 +1,3 @@
-# Plugin remarks
-`Reply from Domoticz moderator: This plugin does not make an interface with hardware, it interfaces with Domoticz and a voice assitant application.
-I am not saying it will not work as a plugin but the better way would be to have it as a separate python script/service installed somewhere on your system and so run it outside Domoticz.`
-See https://forum.domoticz.com/viewtopic.php?p=324019#p324019
-
-I've started to rework and will publish new approach on short notice.
-
 # Goal
 This plugin captures Rhasspy voice requests and processes these requests in Domoticz and speaks feedback via Rhasspy.
 
@@ -28,8 +21,7 @@ In German this would be:
 
 # Prerequisites
 1. `Rhasspy 2.5 up and running`: See for more information https://rhasspy.readthedocs.io/en/latest/. 
-2. `MQTT up and running`: for communication between Rhasspy and this plugin (vice versa).
-3. `Recent Domoticz`: supporting new API structures and extended plugin framework.
+2. `Recent Domoticz`: supporting new API structures.
 
 # Rhasspy
 ## Intents, Sentences and Slots
@@ -100,7 +92,7 @@ The slot `domoticz/temperature` would look like this:
 My current setup is `Base-Satellite` (Base Rhasspy under Docker on NAS and Satellite Rhasspy under Docker on RPi3).
 ![Rhasspy](https://github.com/user-attachments/assets/e539f4a2-1ee0-424c-ab21-19f3d169fa83)
 
-![Base Master](https://github.com/user-attachments/assets/2269182f-0bbe-4f2e-aee6-e449b482d761)
+![Base Master v2](https://github.com/user-attachments/assets/d9d8001d-7c9a-43eb-acdd-033252446d3c)
 
 # Domoticz
 ## User variables
@@ -119,47 +111,36 @@ I'm using user variables for devices (ao) in DzVents as well (so would look like
 Bear in mind, this is `optional` functionality. You can still use the actual device name in the sentence.ini. So two options.
 
 # INSTALLATION
-## A. Plugin
+## A. Python program
 1. Open a `PuTTY` session.
-2. In the session go to the `Plugin` folder of Domoticz.
+2. Go to the Rhasspy `profiles` folder. On that level you will see the language folder of Rhasspy, for instance `en` or `nl`.
 3. Download the plugin: `git clone https://github.com/TurnOfAFriendlyCard/Domoticz-Rhasspy-Plugin`
 4. Alternative is to download and extract the zip file:
    - Go to https://github.com/TurnOfAFriendlyCard/Domoticz-Rhasspy-Plugin.
    - Click on Code and select Download ZIP.
-   - Create a folder for the plugin (`mkdir Domoticz-Rhasspy`) in the `Plugin` folder of Domoticz.
-5. Go to folder (`cd Domoticz-Rhasspy`).
-6. Make the plugin.py file executable (`chmod 755 plugin.py`).
+   - Create a folder for the plugin (`mkdir Domoticz-Rhasspy-Plugin`) in the `profiles` folder of Rhasspy.
+   - Unzip the ZIP file in the created folder.
+5. Go to folder (`cd Domoticz-Rhasspy-Plugin`).
+6. Make the domoticz_rhasspy.py file executable (`chmod 755 plugin.py`).
 7. Install module jmespath: `pip3 install jmespath`. This is required for searching in JSON structures.
 8. Install module deepl: `pip3 install deepl-translate`. This is required for translating Domoticz states and values into local language (so for instance `aus` in `off`).
-9. Restart Domoticz.
 
-## B. Domoticz
-1. In the hardware tab a new `type` will be available: `Rhasspy Voice Assistant`.
-2. Create the new hardware:
-   - Enter a logical `name` (for instance `Rhasspy`).
-   - Select the hardware `type` `Rhasspy Voice Assistant`.
-   - Enter the IP address of the MQTT server (for instance `192.168.200.1`). Required for Rhasppy integration.
-   - Enter the port of the MQTT server (for instance `1883`)
-   - Enter the IP address of the Domoticz server (for instance `192.168.100.1`). Required for API integration.
-   - Enter the port of the Domoticz server (for instance `8080`). Will be HTTP connection.
-   - Enter Rhassy site(s) for audio. Needs to be same as setup in Rhasspy itself. Example: `master`.
-   - When required debug message can be shown in the Domoticz log (set required debuglevel from dropdown).
-   - Press Add to complete the installation.
+## B. Rhasspy
+1. Open Rhasspy and select `Settings` in the menu.
+2. Enable Intent Handling and select Local Command.
+3. Restart Rhasspy.
+4. Open the Local Command settings within Intent Handling.
+5. In field `Program` enter the full path and filename of the program downloaded in step A. For instance `/profiles/domoticz-rhasspy-plugin/domoticz_rhasspy.py`.
+6. In field `Arguments` next is to be entered:
+- `server=[ip-address:port] credentials=[username[:[password] language=[lang] --debug`
+- `Server` is the Domoticz ip address and port.
+- `Credentials` is username and password separated by a colon from the Domoticz user who is authorized to access devices.
+- Language of Rhasspy used for `text-to-speech` (not captured in JSON structure in Rhasspy).
+- Use option `--debug` for showing debug messages in the logfile. Is optional. The logfile is maintained in same folder as the Python program installed in step A.
+- Example:    `server=http://192.102.141.1:8080 credentials=user1:pass1234 language=en --debug`
 
-## C. Rhasspy
-1. The language used by Rhasspy needs to be communicated to the plugin. In Rhasspy go the Advanced menu, so the profile.json will be presented.
-2. Add to the intent section the text `"lang": "nl"` (replace the actual language used).
-3. The profile.json will look like next:
-    },
-    "intent": {
-        "satellite_site_ids": "sat1",
-        "system": "fsticuffs",
-        "lang": "nl"
-    },
-    "mqtt": {
-        "enabled": "true",
-4. Save the profile and restart Rhasspy.
-  
+7. In field `Satellite siteIds` enter the Rhasspy satellites involved in `speech-to-text` and `text-to-speech`.
+
 Enjoy your **Rhasspy Domoticz integration** 😁
 
 # Appendix - Device status details
@@ -174,8 +155,8 @@ List is conform https://wiki.domoticz.com/Developing_a_Python_plugin#Available_D
 | Lighting 2 |  | See Light/Switch | See Light/Switch |
 | Temp |  | ✅ | 💡 |
 | Humidity |  | 💡 | ❌ |
-| Temp+Hum |  | 💡 | ❌ |
-| Temp+Hum+Baro |  | 💡 | ❌ |
+| Temp+Hum |  | ✅ | ❌ |
+| Temp+Hum+Baro |  | ✅ | ❌ |
 | Rain |  | 💡 | ❌ |
 | Wind |  | 💡 | ❌ |
 | UV |  | 💡 | ❌ |
@@ -196,3 +177,10 @@ List is conform https://wiki.domoticz.com/Developing_a_Python_plugin#Available_D
 | Security  |  | 💡 | 💡 |
 | Camera  | Snapshot | 💡 | ❌ |
 | Scenes  |  | 💡 | 💡 |
+
+# Plugin remarks
+Version 1 of this integration (so published releases `v1.0.141` and `v1.1.6`) had been built via the Domomticz framework. That development was advised to cancel:
+`Reply from Domoticz moderator: This plugin does not make an interface with hardware, it interfaces with Domoticz and a voice assitant application.
+I am not saying it will not work as a plugin but the better way would be to have it as a separate python script/service installed somewhere on your system and so run it outside Domoticz.`
+See https://forum.domoticz.com/viewtopic.php?p=324019#p324019
+The `plugin.py` file will be removed from the environment.
