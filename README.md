@@ -184,7 +184,7 @@ List is conform https://wiki.domoticz.com/Developing_a_Python_plugin#Available_D
 | Scale |  | 💡 | 💡 | ❌ |
 | Counter |  | 💡 | ❌ |💡 |
 | Color Switch  |  | 💡 |💡 | 💡 |
-| Thermostat  |  | ✅ |❌ | 💡 |
+| Setpoint | Setpoint | ✅ |❌ | 💡 |
 | General  |  | 💡 |💡 | 💡 |
 | General  | Text | ✅ | ✅ | 💡 |
 | Light/Switch | Selector Switch | ✅ | 💡| 💡 |
