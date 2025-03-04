@@ -68,6 +68,26 @@ Next would be a valid setup within Rhasspy of the sentence.ini file:
     wie ist der Status der Küchenlampe{device:Licht}(:){speakresponse:`Die Lampe in der Küche ist`}
 
 In this case the intent [GetTime] will not be processed in the plugin (as it lacks the prefix `dz`).
+
+### Partial texts
+Status text retrieved from a device status can consists of multiple parts. For instance take a `Temp + Humidity + Baro` device. This extracts next data components:
+- `11.1` Temperature
+- `49.0` Humidity
+- `Comfortable` HumidityStatus
+- `1025.0` Barometer
+- `Some Clouds` ForecastStr
+
+This results in next string to be spoken in Rhasspy:
+`11 point 1 degrees. humidity 49 percent means Comfortable.  air pressure 1025 and Some Clouds`
+
+Suppose you are only interested in the humidity to be spoken. You can configure this via the `speakpartialtext` option in sentence.ini:
+
+    [dzGetDevices]
+
+    what is humidity{device:TempHumBaro}(:){speakresponse:humidity is}(:){speakpartialtext:5,6}
+
+So just count the words (starting with zero as the first word - so `11` from the example Rhasspy spoken text would be the first word)
+
 ### Slots
 It is possible to process slots as spoken device names defined in Rhasspy. The sentence.ini file in Rhasspy would like this:
 
@@ -150,33 +170,33 @@ List is conform https://wiki.domoticz.com/Developing_a_Python_plugin#Available_D
 💡 to do
 ❌ not foreseen (yet)
 
-| Type | Subtype | Retrieve | Update |
-| :--- | :--- | :--- | :--- |
-| Lighting 2 |  | See Light/Switch | See Light/Switch |
-| Temp |  | ✅ | 💡 |
-| Humidity |  | 💡 | ❌ |
-| Temp+Hum |  | ✅ | ❌ |
-| Temp+Hum+Baro |  | ✅ | ❌ |
-| Rain |  | 💡 | ❌ |
-| Wind |  | 💡 | ❌ |
-| UV |  | 💡 | ❌ |
-| Current |  | 💡 | ❌ |
-| Scale |  | 💡 | ❌ |
-| Counter |  | 💡 | 💡 |
-| Color Switch  |  | 💡 | 💡 |
-| Thermostat  |  | ✅ | 💡 |
-| General  |  | 💡 | 💡 |
-| General  | Text | ✅ | 💡 |
-| Light/Switch | Selector Switch | ✅ | 💡 |
-| Light/Switch | Switch | ✅ | ✅ |
-| Lux  |  | 💡 | ❌ |
-| Temp+Baro  |  | 💡 | ❌ |
-| Usage  |  | 💡 | ❌ |
-| Air Quality |  | 💡 | ❌ |
-| P1 Smart Meter  |  | 💡 | ❌ |
-| Security  |  | 💡 | 💡 |
-| Camera  | Snapshot | 💡 | ❌ |
-| Scenes  |  | 💡 | 💡 |
+| Type | Subtype | Retrieve | Partial Response | Update |
+| :--- | :--- | :---: | :---: |:---: |
+| Lighting 2 |  | See Light/Switch | See Light/Switch | See Light/Switch |
+| Temp |  | ✅ | ❌ | 💡 |
+| Humidity |  | 💡 | 💡 | ❌ |
+| Temp+Hum |  | ✅ | ✅ |❌ |
+| Temp+Hum+Baro |  | ✅ | ✅ |❌ |
+| Rain |  | 💡 |💡 | ❌ |
+| Wind |  | 💡 |💡 | ❌ |
+| UV |  | 💡 |💡 | ❌ |
+| Current |  | 💡 | ❌| ❌ |
+| Scale |  | 💡 | 💡 | ❌ |
+| Counter |  | 💡 | ❌ |💡 |
+| Color Switch  |  | 💡 |💡 | 💡 |
+| Thermostat  |  | ✅ |❌ | 💡 |
+| General  |  | 💡 |💡 | 💡 |
+| General  | Text | ✅ | ✅ | 💡 |
+| Light/Switch | Selector Switch | ✅ | 💡| 💡 |
+| Light/Switch | Switch | ✅ | ❌ |✅ |
+| Lux  |  | 💡 | 💡 | ❌ |
+| Temp+Baro  |  | 💡 | 💡 | ❌ |
+| Usage  |  | 💡 | 💡 | ❌ |
+| Air Quality |  | 💡 | 💡 | ❌ |
+| P1 Smart Meter  |  | 💡 | 💡 | ❌ |
+| Security  |  | 💡 | 💡 | 💡 |
+| Camera  | Snapshot | 💡 | 💡 | ❌ |
+| Scenes  |  | 💡 | 💡 | 💡 |
 
 # Plugin remarks
 Version 1 of this integration (so published releases `v1.0.141` and `v1.1.6`) had been built via the Domomticz framework. That development was advised to cancel:
