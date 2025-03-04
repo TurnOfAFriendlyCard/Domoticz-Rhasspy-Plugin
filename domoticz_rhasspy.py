@@ -11,18 +11,19 @@ import requests
 import jmespath
 import deepl
 #####################################################################
-version = "2.0.44 (1 March 2025)"
+version = "2.1.17 (4 March 2025)"
 #####################################################################
 #
 # Constant values
 #
 #####################################################################
 arguments    = []            # input arguments to the program
+argdebug     = "--debug"     # debug argument on local command line rhasspy
+emptySearch  = ["none", ""]  # result of jmespath search is empty
 logDebug     = "DEBUG"       # show logmessage as debug  
 logError     = "ERROR"       # show logmessage as error
 logInfo      = "INFO"        # show logmessage as info
 logStatus    = "STATUS"      # show logmessage as status
-argdebug     = "--debug"     # debug argument on local command line rhasspy
 intentPrefix = "dz"          # fixed prefix for intents to process in Domoticz
 domoAPIbase  = "/json.htm?type=command&param="
 # what domoticz types and subtypes are validated to be processed (use lower characters).
@@ -159,7 +160,7 @@ def translateText (domoLanguage, toLanguage, textToTranslate):
     if domoLanguage == toLanguage:
         textTranslated = textToTranslate.lower()
     else:
-        textTranslated = deepl.translate(source_language=domoLanguage, target_language=toLanguage, text=textToTranslate.lower())
+        textTranslated = deepl.translate(source_language=domoLanguage, target_language=toLanguage, text=textToTranslate.lower(), formality_tone="informal")
     return textTranslated
 
 def convertDegrees(domoticz_value):
@@ -172,6 +173,33 @@ def convertPercentage(domoticz_value):
 
 def convertPressure(domoticz_value):
     domoticz_value = domoticz_value.split(".", 1)[0]
+    return domoticz_value
+
+def extractTexts(domoticz_value, payload):
+    idsPartialText = searchJSON("slots.speakpartialtext", payload).lower()
+    idsPartialText = idsPartialText.split(",")
+    # example ["6", "7"] bit can also be ["none"] if not supplied
+
+    if len(idsPartialText) == 1:
+        if idsPartialText[0] == "none":
+           return domoticz_value
+
+#        if idsPartialText not in emptySearch:
+
+    wordsPartialText = domoticz_value.split()
+    # example ["4" "point" "7" "degrees." "humidity" "90" "percent" "means" "Wet"]
+    
+    writeLog("Partial word id's " + str(idsPartialText), logDebug)
+    try:
+        if (len(wordsPartialText) - 1) >= int(max(idsPartialText)):     # 8 vs 7
+            domoticz_value = ""
+            for ids in idsPartialText:
+                try:
+                    domoticz_value = domoticz_value + " " + wordsPartialText[int(ids)]
+                except:
+                    writeLog("Partial word id incorrect " + str(ids), logError)
+    except:
+        writeLog("Partial words ids incorrect (no partial processing)", logError)
     return domoticz_value
 
 def processDomoticz (apiCommand, payload):
@@ -237,6 +265,7 @@ def processDomoticz (apiCommand, payload):
         hum = "humidity " + convertPercentage(searchJSON("result[].Humidity", domoticz_result.json()))
         humstat = searchJSON("result[].HumidityStatus", domoticz_result.json())
         domoticz_value = temp + ". " + hum + " means " + humstat
+        domoticz_value = extractTexts(domoticz_value, payload)
         domoticzValueToTranslate = True
     # temp + humidity + baro
     if (domoticz_type == domoTypes[4]):
@@ -246,9 +275,11 @@ def processDomoticz (apiCommand, payload):
         baro = "air pressure " + convertPressure(searchJSON("result[].Barometer", domoticz_result.json()))
         forecast = searchJSON("result[].ForecastStr", domoticz_result.json())
         domoticz_value = temp + ". " + hum + " means " + humstat + ".  " + baro + " and " + forecast
+        domoticz_value = extractTexts(domoticz_value, payload)
         domoticzValueToTranslate = True
     # general
     if (domoticz_type == domoTypes[13] and domoticz_subtype == domoSubTypes[22]):
+        domoticz_value = extractTexts(domoticz_value, payload)
         domoticzValueToTranslate = False
     writeLog("Domoticz value " + domoticz_value, logDebug)
 
