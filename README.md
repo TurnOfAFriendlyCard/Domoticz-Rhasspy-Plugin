@@ -31,8 +31,9 @@ Every intent that needs to be interpreted by Domoticz needs to start with `dz` s
 is not case sensitive (everything will be converted to lowercase by the plugin).
 
 Currently supported API commands of Domoticz (see for details https://wiki.domoticz.com/Domoticz_API/JSON_URL's and the appendix chapter at the end of this readme document):
-  1. [dzswitchlight] - So Domoticz type `Light/Switch`, update the state.
-  2. [dzgetdevices] - So actual value of a Domoticz device, report the value.
+  1. [dzswitchlight] - So on/off open/close switches.
+  2. [dzsetsetpoint] - Update setpoint device like heating thermostat (available as from v3).
+  3. [dzgetdevices] - So actual value of a Domoticz device, report the value.
 ### Sentences
 Besides the sentence rules of Rhasspy every sentence consists of next blocks:
 1. `spoken text`
@@ -52,12 +53,13 @@ Let's assume Domoticz is running in English language and review the German kitch
 This will be communicated to Domoticz as `on` or `off`. If language Rhasspy and Domoticz are the same, the translation can be omitted (so `(an | aus){state}` for both German). The field for Domoticz to capture the state of the device is {state}.
 - (:){speakresponse:`Das Licht in der Küche ist`
   * The text to be spoken by Rhasspy after processing by Domoticz. The actual status will be captured and added to this text. If status is `on` this will be translated to German as `an`.
+
 ### Sample sentence.ini
 Next would be a valid setup within Rhasspy of the sentence.ini file:
 
     [dzSwitchLight]
 
-    mach das Küchenlicht`{device:Licht} (an:on | aus:off){state}(:){speakresponse:`Das Licht in der Küche ist`}
+    mach das Küchenlicht`{device:Licht} (an:on | aus:off){state}(:){speakresponse:Das Licht in der Küche ist}
 
     [GetTime]
 
@@ -65,7 +67,7 @@ Next would be a valid setup within Rhasspy of the sentence.ini file:
 
     [dzGetDevices]
 
-    wie ist der Status der Küchenlampe{device:Licht}(:){speakresponse:`Die Lampe in der Küche ist`}
+    wie ist der Status der Küchenlampe{device:Licht}(:){speakresponse:Die Lampe in der Küche ist}
 
 In this case the intent [GetTime] will not be processed in the plugin (as it lacks the prefix `dz`).
 
@@ -86,7 +88,17 @@ Suppose you are only interested in the humidity to be spoken. You can configure 
 
     what is humidity{device:TempHumBaro}(:){speakresponse:humidity is}(:){speakpartialtext:5,6}
 
-So just count the words (starting with zero as the first word - so `11` from the example Rhasspy spoken text would be the first word)
+So just count the words (starting with zero as the first word - so `11` from the example Rhasspy spoken text would be the first word).~~
+
+As from vs 3 the `speakpartialtext` functionality is integrated into the `speakresponse` tag (and `speakpartialtext` tag will be deprecated in next version). 
+So would be something like `(:){speakresponse:humidity is;3;percent}`.
+Retrieved base values from a device type `Temp + Humidity + Baro` are for example: `11 point 1 49 Comfortable 1025 Some Clouds`.
+Feedback will be spoken as `humidity is 49 percent`. So fixed texts are `humidity is` and `percent` where the `3` refers to the 3rd value in the reported values counting the first field as zero.
+Bear in mind the blocks after the `speakresponse` tag are separated by a semi-colon (so `;`).
+In this way you can build you own reporting feedback to be spoken mixing fixed text and values from Domoticz.
+
+Also new functionality is to suppress the feedback of the actual state by a device (as from vs 3 as well). The German example of the kitchenlight reports the actual state.
+If you would amend the sentence to `(:){speakresponse:Das Licht in der Küche ist}(:){speakstate:no}` no actual state would be spoken.
 
 ### Slots
 It is possible to process slots as spoken device names defined in Rhasspy. The sentence.ini file in Rhasspy would like this:
@@ -131,7 +143,12 @@ I'm using user variables for devices (ao) in DzVents as well (so would look like
 Bear in mind, this is `optional` functionality. You can still use the actual device name in the sentence.ini. So two options.
 
 # INSTALLATION
-## A. Python program
+
+Two methods can be implemented: 1) via Local Command script or 2) via MQTT service script (as from vs3).
+
+## Local Command Script
+
+### A. Python program
 1. Open a `PuTTY` session.
 2. Go to the Rhasspy `profiles` folder. On that level you will see the language folder of Rhasspy, for instance `en` or `nl`.
 3. Download the plugin: `git clone https://github.com/TurnOfAFriendlyCard/Domoticz-Rhasspy-Plugin`
@@ -141,11 +158,11 @@ Bear in mind, this is `optional` functionality. You can still use the actual dev
    - Create a folder for the plugin (`mkdir Domoticz-Rhasspy-Plugin`) in the `profiles` folder of Rhasspy.
    - Unzip the ZIP file in the created folder.
 5. Go to folder (`cd Domoticz-Rhasspy-Plugin`).
-6. Make the domoticz_rhasspy.py file executable (`chmod 755 plugin.py`).
+6. Make the domoticz_rhasspy.py file executable (`chmod 755 pdomoticz_rhasspy.py`). Same applies to domoticz_rhasspy_vars.py and domoticz_rhasspy_functions.py.
 7. Install module jmespath: `pip3 install jmespath`. This is required for searching in JSON structures.
 8. Install module deepl: `pip3 install deepl-translate`. This is required for translating Domoticz states and values into local language (so for instance `aus` in `off`).
 
-## B. Rhasspy
+### B. Rhasspy
 1. Open Rhasspy and select `Settings` in the menu.
 2. Enable Intent Handling and select Local Command.
 3. Restart Rhasspy.
@@ -160,6 +177,44 @@ Bear in mind, this is `optional` functionality. You can still use the actual dev
 - Example:    `server=http://192.102.141.1:8080 credentials=user1:pass1234 language=en --debug`
 
 7. In field `Satellite siteIds` enter the Rhasspy satellites involved in `speech-to-text` and `text-to-speech`.
+
+## MQTT service Script
+
+### A. Rhasspy
+1. Open Rhasspy and select `Settings` in the menu.
+2. Disable Intent Handling.
+3. Restart Rhasspy.
+
+### B. Python program
+1. Open a `PuTTY` session.
+2. Go to the Domoticz `scripts` folder. On that level you will see for example the `dzVents` and `lua` folders.
+3. Download the plugin: `git clone https://github.com/TurnOfAFriendlyCard/Domoticz-Rhasspy-Plugin`
+4. Alternative is to download and extract the zip file:
+   - Go to https://github.com/TurnOfAFriendlyCard/Domoticz-Rhasspy-Plugin.
+   - Click on Code and select Download ZIP.
+   - Create a folder for the plugin (`mkdir Domoticz-Rhasspy-Plugin`) in the `scripts` folder of Domoticz.
+   - Unzip the ZIP file in the created folder.
+5. Go to folder (`cd Domoticz-Rhasspy-Plugin`).
+6. Make the domoticz_rhasspy_mqtt.py file executable (`chmod 755 pdomoticz_rhasspy_mqtt.py`). Same applies to domoticz_rhasspy_vars.py and domoticz_rhasspy_functions.py.
+7. Install module jmespath: `pip3 install jmespath`. This is required for searching in JSON structures.
+8. Install module deepl: `pip3 install deepl-translate`. This is required for translating Domoticz states and values into local language (so for instance `aus` in `off`).
+9. Install module paho mqtt: `pip3 install paho-mqtt`. This is required for communicating with the MQTT server.
+10. Start the python script, for instance like next:
+
+        /usr/bin/python3.9 /opt/domoticz/userdata/scripts/Domoticz-Rhasspy-Plugin/domoticz_rhasspy_mqtt.py server=http://192.168.141.1:8080 credentials=<user>:<password> mqttserver=localhost:1883 –debug >> /opt/domoticz/userdata/scripts/Domoticz-Rhasspy-Plugin/domoticz_rhasspy_daemon.log 2>&1
+
+11. The command can be broken down as:
+- `/usr/bin/python3.9` to start the python script.
+- `/opt/domoticz/userdata/scripts/Domoticz-Rhasspy-Plugin/domoticz_rhasspy_mqtt.py` full path to the python script.
+- `server=[ip-address:port] credentials=[username[:[password] mqttserver=[ip-address:port] --debug`
+- `Server` is the Domoticz ip address and port.
+- `Credentials` is username and password separated by a colon from the Domoticz user who is authorized to access devices.
+- `MQTTServer` is the MQTT ip address and port.
+- Use option `--debug` for showing debug messages in the logfile. Is optional. The logfile is maintained in same folder as the Python program installed in step B5.
+12. The python program will start and run in the background.
+- Use `ps axuw | grep domoticz_rhasspy_mqtt.py` to verify the process running and to determine the process id.
+- Use kill <process id> to stop the python program.
+- The `PuTTY` session can be closed.
 
 Enjoy your **Rhasspy Domoticz integration** 😁
 
@@ -184,7 +239,7 @@ List is conform https://wiki.domoticz.com/Developing_a_Python_plugin#Available_D
 | Scale |  | 💡 | 💡 | ❌ |
 | Counter |  | 💡 | ❌ |💡 |
 | Color Switch  |  | 💡 |💡 | 💡 |
-| Setpoint | Setpoint | ✅ |❌ | 💡 |
+| Setpoint | Setpoint | ✅ |✅ | 💡 |
 | General  |  | 💡 |💡 | 💡 |
 | General  | Text | ✅ | ✅ | 💡 |
 | Light/Switch | Selector Switch | ✅ | 💡| 💡 |
