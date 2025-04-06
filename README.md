@@ -199,11 +199,12 @@ Two methods can be implemented: 1) via Local Command script or 2) via MQTT servi
 7. Install module jmespath: `pip3 install jmespath`. This is required for searching in JSON structures.
 8. Install module deepl: `pip3 install deepl-translate`. This is required for translating Domoticz states and values into local language (so for instance `aus` in `off`).
 9. Install module paho mqtt: `pip3 install paho-mqtt`. This is required for communicating with the MQTT server.
-10. Start the python script, for instance like next:
+10. Install module daemon: `pip3 install python-daemon`. This is required for running Rhasspy Domoticz MQTT script in background.
+11. Start the python script, for instance like next:
 
         /usr/bin/python3.9 /opt/domoticz/userdata/scripts/Domoticz-Rhasspy-Plugin/domoticz_rhasspy_mqtt.py server=http://192.168.141.1:8080 credentials=<user>:<password> mqttserver=localhost:1883 –debug >> /opt/domoticz/userdata/scripts/Domoticz-Rhasspy-Plugin/domoticz_rhasspy_daemon.log 2>&1
 
-11. The command can be broken down as:
+12. The command can be broken down as:
 - `/usr/bin/python3.9` to start the python script.
 - `/opt/domoticz/userdata/scripts/Domoticz-Rhasspy-Plugin/domoticz_rhasspy_mqtt.py` full path to the python script.
 - `server=[ip-address:port] credentials=[username[:[password] mqttserver=[ip-address:port] --debug`
