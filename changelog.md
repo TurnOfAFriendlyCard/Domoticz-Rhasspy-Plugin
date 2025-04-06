@@ -1,3 +1,12 @@
+## v3.0 (apr 2025):
+- Added MQTT functionality.
+- Added running as a service (for MQTT).
+- Integrated `speakpartialtext` option to `speakresponse` tag.
+- Added setpoint device.
+- Updated logfile approach.
+- Introduced vars.py for separating functions from vars.
+- Introduced specific translation approach (where deepl misses the context).
+- Cleaned up python.
 ## v2.1 (mar 2025):
 - Added `speakpartialtext` option in sentence.ini
 ## v2.0 (mar 2025):
