@@ -1,7 +1,7 @@
 ## v3.0 (apr 2025):
 - Added MQTT functionality.
 - Added running as a service (for MQTT).
-- Integrated `speakpartialtext` option to `speakresponse` tag.
+- Integrated `speakpartialtext` option into `speakresponse` tag.
 - Added setpoint device.
 - Updated logfile approach.
 - Introduced vars.py for separating functions from vars.
