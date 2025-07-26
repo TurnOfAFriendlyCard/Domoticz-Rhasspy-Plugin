@@ -1,3 +1,9 @@
+## v3.3 (jul 2025):
+- Added security type Domoticz (alarm activation).
+- Added supported types Domoticz (see table appendix).
+- Added self maintainable JSON translation table.
+- Reworked domo types approach into JSON structure.
+- Removed deepl.
 ## v3.0 (apr 2025):
 - Added MQTT functionality.
 - Added running as a service (for MQTT).
@@ -17,4 +23,4 @@
 - Added Domoticz `user variable` name for device name.
 - Added Rhasspy `slots` to define devices.
 ## v1.0 (feb 2025):
-- Initial publication
+- Initial publication.
