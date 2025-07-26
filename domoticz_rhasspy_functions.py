@@ -9,17 +9,16 @@ import sys
 import datetime
 import requests
 import jmespath
-import deepl
 from domoticz_rhasspy_vars import *
 #####################################################################
-version = "3.0.90 (6 April 2025)"
+version = "3.3.18 (26Jul25)"
 #####################################################################
 #
 # Global functions
 #
 #####################################################################
-def openLog(scriptType):
-    global logfile, pathname
+def openLog(scriptType, version_script):
+    global logfile, pathname, specificTranslation
     if scriptType == scriptTypeLC:
         pathname = pathnameLC
     else:
@@ -28,9 +27,20 @@ def openLog(scriptType):
         logfile = open(pathname + logFileName, "a")
     except FileNotFoundError:    
         logfile = open(pathname + logFileName, "w")
-    writeLog ("Domoticz Rhasspy initiated: " + version, logStatus)
+    writeLog ("Domoticz Rhasspy initiated: Functions=v" + version + " / Vars=v" + version_vars + " / Script=v" + version_script, logStatus)
     writeLog ("Arguments Path:        " + str(pathname), logInfo)
     arguments.append(pathname)              # 0: pathname of logfile
+
+    try:
+        with open(pathname + translationFileName, 'r') as jsonFile:
+            specificTranslation = json.load(jsonFile)
+            writeLog ("Translations " + str(specificTranslation), logDebug)
+    except FileNotFoundError:
+        writeLog ("Translations JSON file not found", logError)
+        specificTranslation = []
+    except json.JSONDecodeError as e:
+        writeLog ("Translations JSON decode error: {}".format(e), logError)
+        specificTranslation = []
 
 def closeLog():
     writeLog ("Domoticz Rhasspy completed\n==================", logStatus)
@@ -141,21 +151,15 @@ def searchJSON(jmessearch, payload):
     writeLog("searchJSON <" + foundJSONstring + "> found thru <" + jmessearch + ">", logDebug)
     return foundJSONstring
 
-def translateText (domoLanguage, toLanguage, textToTranslate):
-    writeLog("Language from <" + domoLanguage + "> to <" + toLanguage + ">", logDebug)
-    if domoLanguage == toLanguage:
-        textTranslated = textToTranslate.lower()
+def translateText (textToTranslate):
+    textToTranslate = textToTranslate.lower()
+    writeLog("Lower case text to translate <" + textToTranslate + ">", logDebug)
+    if textToTranslate in specificTranslation.keys():
+        writeLog("Found specific translation for <" + textToTranslate + "> : <" + specificTranslation [textToTranslate] + ">", logDebug)
+        textTranslated = specificTranslation [textToTranslate]
     else:
-        textTranslated = deepl.translate(source_language=domoLanguage, target_language=toLanguage, text=textToTranslate.lower(), formality_tone="informal")
-        try:
-            if specificTranslation [textTranslated] != "None":                 # so specific translation to apply
-                writeLog("Found specific translation for <" + textTranslated + "> : <" + specificTranslation [textTranslated] + ">", logDebug)
-                textTranslated = specificTranslation [textTranslated]
-            else:
-                writeLog("Specific translation found None", logDebug)
-        except:
-            writeLog("No specific translation found for <" + textTranslated + ">", logDebug)
-    writeLog("Translated <" + textToTranslate + "> into <" + textTranslated + ">", logDebug)
+        writeLog("No specific translation found for <" + textToTranslate + ">", logDebug)
+        textTranslated = textToTranslate
     return textTranslated
 
 def extractTexts(blocksSpeakResponse, blocksDomoticzValues, payload, scriptType):
@@ -183,7 +187,7 @@ def extractTexts(blocksSpeakResponse, blocksDomoticzValues, payload, scriptType)
     for indexOrText in blocksSpeakResponse:
         if indexOrText.isdigit():
             if int(indexOrText) in range(0, countBlocksDomoticzValues):
-                sentenceToSpeak = sentenceToSpeak + " " + ''.join(filter(str.isalnum, blocksDomoticzValues[int(indexOrText)]))
+                sentenceToSpeak = sentenceToSpeak + " " + translateText (''.join(filter(str.isalnum, blocksDomoticzValues[int(indexOrText)])))
                 writeLog("Word id   <" + str(''.join(filter(str.isalnum, blocksDomoticzValues[int(indexOrText)]))) +">", logDebug)
                 speakFullValue = False
             else:
@@ -193,7 +197,7 @@ def extractTexts(blocksSpeakResponse, blocksDomoticzValues, payload, scriptType)
             writeLog("Word text <" + str(indexOrText) +">", logDebug)
     if speakFullValue: # all values captured from Domoticz to be spoken
         for textBlock in blocksDomoticzValues:
-            sentenceToSpeak = sentenceToSpeak + " " + textBlock
+            sentenceToSpeak = sentenceToSpeak + " " + translateText (textBlock)
             writeLog("Word block <" + str(textBlock) +">", logDebug)
     return sentenceToSpeak
 
@@ -202,7 +206,7 @@ def setValueNoDecimal(valueWithDecimal):
     return valueWithoutDecimal
 
 def getValueDecimalPoint (critJSON, payload):
-    return searchJSON(critJSON, payload).replace(".", " point ")
+    return searchJSON(critJSON, payload).replace(".", " " + specificTranslation ["point"] + " ")
 
 def getValueNoDecimal (critJSON, payload):
     return setValueNoDecimal(searchJSON(critJSON, payload))
@@ -238,20 +242,31 @@ def processDomoticz (apiCommand, payload, scriptType):
     writeLog ("Domoticz API command " + apiCommand + " (" + domoticz_device + ")", logInfo)
 
     # get language of Domoticz and Rhasspy
-    domoLanguage, toLanguage = getLanguage(scriptType, payload)
+    # JULY 2025 NOT REQUIRED AS DEEPL IS REPLACED BY SPECIFIC TRANSLATIONS
+    # domoLanguage, toLanguage = getLanguage(scriptType, payload)
 
-    # validate type and subtype can already be processed by the plugin.
+    ### validate type and subtype can already be processed by the plugin.
     domoticz_result = domoRequest("getdevices&rid=" + domoticz_IDX)
     if not domoticz_result.ok:
         writeLog ("Device details " + domoticz_device + " not found", logError)
         return ""
-    domoticz_type = searchJSON(resultJSON ["type"], domoticz_result.json()).lower()
+    domoticz_type    = searchJSON(resultJSON ["type"], domoticz_result.json()).lower()
     domoticz_subtype = searchJSON(resultJSON ["subtype"], domoticz_result.json()).lower()
-    if not (domoticz_type in domoTypes and domoticz_subtype in domoSubTypes):
-        writeLog ("Device type / subtype (" + domoticz_type + " / " + domoticz_subtype + ") for device <" + domoticz_device + "> not validated yet", logError)
+    if not domoticz_type in domoTypesJSON.keys():
+        writeLog ("Domoticz type " + domoticz_type + " not setup (to add to domoTypesJSON)", logError)
+        return ""
+    if domoTypesJSON [domoticz_type] == False:
+        writeLog ("Domoticz type " + domoticz_type + " not configured (domoTypesJSON false)", logError)
+        return ""
+    if not domoticz_subtype in domoSubTypesJSON.keys():
+        writeLog ("Domoticz subtype " + domoticz_subtype + " not setup (to add to domoSubTypesJSON)", logError)
+        return ""
+    if domoSubTypesJSON [domoticz_subtype] == False:
+        writeLog ("Domoticz subtype " + domoticz_subtype + " not configured (domoSubTypesJSON false)", logError)
         return ""
     writeLog("Domoticz type/subtype validated", logDebug)
 
+    ### update to do? if so also retrieve updated value.
     # perform update for switchlight types
     if apiCommand == "switchlight":
         domoticz_state = searchJSON(tagListJSON ["state"] [scriptType], payload)
@@ -259,13 +274,27 @@ def processDomoticz (apiCommand, payload, scriptType):
         if not domoticz_result.ok:
             writeLog("Device update " + domoticz_device + " failed", logError)
             return ""
-
     # perform update for setpoint types
     if apiCommand == "setsetpoint":
         domoticz_temp  = searchJSON(tagListJSON ["setpoint"] [scriptType], payload)
         domoticz_result = domoRequest(apiCommand + "&idx=" + domoticz_IDX + "&setpoint=" + domoticz_temp)
         if not domoticz_result.ok:
             writeLog("Setpoint update " + domoticz_device + " failed", logError)
+            return ""
+    # perform a getdevices to confirm the actual status of the device after an update request
+    # and would be that all intents will result in a getdevices request whatever intent is defined.
+    if apiCommand != "getdevices":
+        domoticz_result = domoRequest("getdevices&rid=" + domoticz_IDX)
+        if not domoticz_result.ok:
+            writeLog("Device actual details " + domoticz_device + " not found", logError)
+            return ""
+    writeLog("Domoticz update validated", logDebug)
+
+    # perform retrieve security status
+    if apiCommand == "getsecstatus":
+        domoticz_result = domoRequest(apiCommand)
+        if not domoticz_result.ok:
+            writeLog("Security status retrieve failed", logError)
             return ""
 
     baseSpeakResponse = searchJSON(tagListJSON ["speakresponse"] [scriptType], payload)
@@ -277,45 +306,52 @@ def processDomoticz (apiCommand, payload, scriptType):
     if searchJSON(tagListJSON ["speakstate"] [scriptType], payload) == "no":
         writeLog("No actual state feedback requested", logDebug)
         return baseSpeakResponse
-                
-    # perform a getdevices to confirm the actual status of the device after an update request
-    # and would be that all intents will result in a getdevices request whatever intent is defined.
-    if apiCommand != "getdevices":
-        domoticz_result = domoRequest("getdevices&rid=" + domoticz_IDX)
-        if not domoticz_result.ok:
-            writeLog("Device actual details " + domoticz_device + " not found", logError)
-            return ""
         
     # always determine base value via Data field.
     domoticz_value = searchJSON(resultJSON ["data"], domoticz_result.json())
     # translate raw data to local language if this is an update - so not a getdevices
     if apiCommand != "getdevices":
-        domoticz_value = translateText (domoLanguage, toLanguage, domoticz_value)
-        
+        domoticz_value = translateText (domoticz_value)
+    writeLog("Domoticz current API result <" + str(domoticz_result.json()) + ">", logDebug)
+
     # adjust the captured data so it can be spoken properly
-    # Temp
-    if (domoticz_type == domoTypes[1]):
-        domoticz_value = translateText (domoLanguage, toLanguage, getValueDecimalPoint (resultJSON ["temp"], domoticz_result.json()))
-    # temp + humidity
-    if (domoticz_type == domoTypes[3]):
-        domoticz_value = translateText (domoLanguage, toLanguage, getValueDecimalPoint (resultJSON ["temp"], domoticz_result.json())) + " " +\
+    # only validated types and subtypes are passed (so value is True in domoTypesJSON / domoSubTypesJSON)
+    # take care to extend the resultJSON variable.
+
+    if domoticz_type == "current" or domoticz_subtype == "visibility" or domoticz_subtype == "pressure" or domoticz_subtype == "kwh":
+        domoticz_value = getValueDecimalPoint (resultJSON ["data"], domoticz_result.json())
+    if domoticz_subtype == "energy":
+        energysplitted = getValue (resultJSON ["data"], domoticz_result.json()).split(";")
+        domoticz_value = energysplitted[0] + " " +\
+                         energysplitted[1] + " " +\
+                         energysplitted[2] + " " +\
+                         energysplitted[3] + " " +\
+                         energysplitted[4] + " " +\
+                         energysplitted[5]
+    if domoticz_type == "security":
+        domoticz_value = "security" + getValue (resultJSON ["secstatus"], domoticz_result.json())
+    if domoticz_type == "setpoint":
+        domoticz_value = translateText (getValueDecimalPoint (resultJSON ["data"], domoticz_result.json()))
+    if domoticz_type == "temp":
+        domoticz_value = getValueDecimalPoint (resultJSON ["temp"], domoticz_result.json())
+    if domoticz_type == "temp + humidity":
+        domoticz_value = getValueDecimalPoint (resultJSON ["temp"], domoticz_result.json()) + " " +\
                          getValueNoDecimal (resultJSON ["humidity"], domoticz_result.json()) + " " +\
-                         translateText (domoLanguage, toLanguage, getValue (resultJSON ["humiditystatus"], domoticz_result.json()))
-    # temp + humidity + baro
-    if (domoticz_type == domoTypes[4]):
-        domoticz_value = translateText (domoLanguage, toLanguage, getValueDecimalPoint (resultJSON ["temp"], domoticz_result.json())) + " " +\
+                         translateText (getValue (resultJSON ["humiditystatus"], domoticz_result.json()))
+    if domoticz_type == "temp + humidity + baro":
+        domoticz_value = getValueDecimalPoint (resultJSON ["temp"], domoticz_result.json()) + " " +\
                          getValueNoDecimal (resultJSON ["humidity"], domoticz_result.json()) + " " +\
-                         translateText (domoLanguage, toLanguage, getValue (resultJSON ["humiditystatus"], domoticz_result.json())) + " " +\
+                         translateText (getValue (resultJSON ["humiditystatus"], domoticz_result.json())) + " " +\
                          getValueNoDecimal (resultJSON ["barometer"], domoticz_result.json()) + " " +\
-                         translateText (domoLanguage, toLanguage, getValue (resultJSON ["forecaststr"], domoticz_result.json()))
-    # setpoint
-    if (domoticz_type == domoTypes[12]):
-        domoticz_value = translateText (domoLanguage, toLanguage, getValueDecimalPoint (resultJSON ["data"], domoticz_result.json()))
-    # general and text
-###    if (domoticz_type == domoTypes[13] and domoticz_subtype == domoSubTypes[22]):
-    # p1 smart meter and gas
-###    if (domoticz_type == domoTypes[19] and domoticz_subtype == domoSubTypes[35]):
+                         translateText (getValue (resultJSON ["forecaststr"], domoticz_result.json()))
+    if domoticz_type == "wind":
+        domoticz_value = getValueNoDecimal (resultJSON ["direction"], domoticz_result.json()) + " " +\
+                         getValue (resultJSON ["directionstr"], domoticz_result.json()) + " " +\
+                         getValueDecimalPoint (resultJSON ["speed"], domoticz_result.json()) + " " +\
+                         getValueDecimalPoint (resultJSON ["chill"], domoticz_result.json()) + " " +\
+                         getValueDecimalPoint (resultJSON ["temp"], domoticz_result.json())
+    writeLog("Domoticz raw value <" + domoticz_value + ">", logDebug)
 
     sentence = extractTexts(baseSpeakResponse, domoticz_value, payload, scriptType)
-    writeLog("Domoticz sentence <" + sentence +">", logDebug)
+    writeLog("Domoticz sentence for device <" + domoticz_device + " (idx="+ domoticz_IDX +") > is '" + sentence +"'", logDebug)
     return sentence

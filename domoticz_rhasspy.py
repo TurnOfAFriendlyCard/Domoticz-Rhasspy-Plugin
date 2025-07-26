@@ -3,8 +3,10 @@
 # Python Plugin for Rhasspy Domoticz integration
 #
 # Author:  marathon2010
-# Version 2.2.10 (25 March 2025)
 #
+#####################################################################
+version_script = "2.2.12 (30Apr25)"
+#####################################################################
 from domoticz_rhasspy_functions import *
 #####################################################################
 #
@@ -33,7 +35,7 @@ def addSpeechJSON(text):
 # Preparation
 #
 #####################################################################
-openLog(scriptTypeLC)
+openLog(scriptTypeMQ, version_script)
 #####################################################################
 #
 # Main processing

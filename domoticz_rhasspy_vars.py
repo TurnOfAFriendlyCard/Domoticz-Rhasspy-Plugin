@@ -3,29 +3,40 @@
 # Python Plugin for Rhasspy Domoticz integration - generic variables and constants
 #
 # Author:  marathon2010
-# Version: 0.1.12 (30 March 2025)
 #
+#####################################################################
+version_vars = "1.2.17 (26Jul25)"
 #####################################################################
 import os
 import sys
 #####################################################################
-arguments     = []            # input arguments to the program
-argumentsText = ["server", "credentials", "language", "mqttserver"]       # fixed text in arguments line for validations
-argdebug      = "--debug"     # debug argument on local command line rhasspy
-intentPrefix  = "dz"          # fixed prefix for intents to process in Domoticz
-logDebug      = "DEBUG"       # show logmessage as debug  
-logError      = "ERROR"       # show logmessage as error
-logInfo       = "INFO"        # show logmessage as info
-logStatus     = "STATUS"      # show logmessage as status
-logFileName   = "/domoticz_rhasspy.log"
+# Values may be adjusted by the user
+#####################################################################
+intentPrefix        = "dz"                                           # fixed prefix for intents to process in Domoticz, should be used in the sentences in Rhasspy like [dzGetDevices]
+logFileName         = "/domoticz_rhasspy.log"                        # log where progress can be in capturing and processing intents within Domoticz
+translationFileName = "/domoticz_rhasspy_translations.json"          # native texts for Domoticz output (if language Domoticz differs from Rhasspy)
+pathnameMQ          = "/opt/domoticz/userdata/scripts/python"        # path to python scripts when running MQTT version.
+#####################################################################
+# Values are not to be adjusted by the user
+#####################################################################
+arguments           = []            # input arguments to the program
+argumentsText       = ["server", "credentials", "language", "mqttserver"]       # fixed text in arguments line for validations
+argdebug            = "--debug"     # debug argument on local command line rhasspy
+domoAPIbase         = "/json.htm?type=command&param="
+logDebug            = "DEBUG"       # show logmessage as debug  
+logError            = "ERROR"       # show logmessage as error
+logInfo             = "INFO"        # show logmessage as info
+logStatus           = "STATUS"      # show logmessage as status
+
 # scriptType is 1) LocalCommand or 2) MQTT defined in calling script.
 # LocalCommand implies script called from Intent Handling in Rhasspy, so JSON file communication
 # MQTT implies script running and monitoring MQTT puplished messahes from Rhasspy
-scriptTypeLC  = "LocalCommand"
-scriptTypeMQ  = "MQTT"
-pathnameLC    = sys.argv[0][:sys.argv[0].rfind("/")] 
-pathnameMQ    = os.getcwd()
-tagListJSON = {
+scriptTypeLC        = "LocalCommand"
+scriptTypeMQ        = "MQTT"
+pathnameLC          = sys.argv[0][:sys.argv[0].rfind("/")] 
+###pathnameMQ          = os.getcwd()
+
+tagListJSON = {  # variables that can be used in the sentences, how to retrieve from the slot.
   "device" : {
     scriptTypeLC : "slots.device",
     scriptTypeMQ : "slots[0].value.value"
@@ -51,34 +62,92 @@ tagListJSON = {
     scriptTypeMQ : "slots[?entity=='state'].value.value"
   },
 }
-resultJSON = {
+
+resultJSON = {     # define in which part of the Domoticz API JSON structure the value is defined.
   "barometer"      : "result[].Barometer",
+  "chill"          : "result[].Chill",
   "data"           : "result[].Data",
+  "direction"      : "result[].Direction",
+  "directionstr"   : "result[].DirectionStr",
   "forecaststr"    : "result[].ForecastStr",
   "humidity"       : "result[].Humidity",
   "humiditystatus" : "result[].HumidityStatus",
+  "secstatus"      : "secstatus",
+  "speed"          : "result[].Speed",
   "subtype"        : "result[].SubType",
   "temp"           : "result[].Temp",
   "type"           : "result[].Type",
 }
-specificTranslation = {
-  "op"      : "aan",
-}
-domoAPIbase   = "/json.htm?type=command&param="
 # what domoticz types and subtypes are validated to be processed (use lower characters).
-# all types/subtypes are listed, not yet validated is prefix with an ~.    
-domoTypes         = ["lighting 2", "temp", "~humidity", "temp + humidity", "temp + humidity + baro",    # 0..4
-                     "~rain", "~wind", "~uv", "~current", "~scale",                                     # 5..9
-                     "~counter", "~color switch", "setpoint", "general", "light/switch",                # 10..14
-                     "~lux", "~temp+baro", "~usage", "~air quality", "p1 smart meter"                   # 15..19
-                    ]
-domoSubTypes      = ["", "lacrosse tx3", "wtgr800", "thb1 - bthr918", "bthgn129",                            # 0..4
-                     "thb2 - bthr918n", "bthr968", "weather station", "~weight", "setpoint",                 # 5..9
-                     "~visibility", "~solar radiation", "~soil moisture", "~leaf wetness", "~percentage",    # 10..14
-                     "~fan", "~voltage", "~pressure", "~kwh", "~waterflow",                                  # 15..19
-                     "~custom sensor", "~managed counter", "text", "~alert", "~ampere (1 phase)",            # 20..24
-                     "~sound le vel", "~barometer", "~distance", "~counter incremental", "selector switch",  # 25..29
-                     "switch", "~lux", "~electric", "~energy", "gas",                                        # 30..34
-                     "thgn122/123/132, thgr122/228/238/268"                                                  # 35..36
-                    ]
+# all known types/subtypes are listed, not yet validated has state False.    
+
+domoTypesJSON = {
+  "air quality"            : False,
+  "color switch"           : False,
+  "counter"                : False,
+  "current"                : True,
+  "general"                : True,
+  "humidity"               : False,
+  "light/switch"           : True,
+  "lighting 2"             : True,
+  "lux"                    : False,
+  "p1 smart meter"         : True,
+  "rain"                   : False,
+  "rfxmeter"               : False,
+  "scale"                  : False,
+  "security"               : True,
+  "setpoint"               : True,
+  "temp + humidity + baro" : True,
+  "temp + humidity"        : True,
+  "temp"                   : True,
+  "temp+baro"              : False,
+  "usage"                  : True,
+  "uv"                     : False,
+  "wind"                   : True,
+}
+
+domoSubTypesJSON = {
+""                                     : True,
+"ac"                                   : True,
+"alert"                                : False,
+"ampere (1 phase)"                     : False,
+"barometer"                            : False,
+"bthgn129"                             : True,
+"bthr968"                              : True,
+"cm113, electrisave"                   : True,
+"counter incremental"                  : False,
+"custom sensor"                        : True,
+"distance"                             : False,
+"electric"                             : True,
+"energy"                               : True,
+"fan"                                  : False,
+"gas"                                  : True,
+"kwh"                                  : True,
+"lacrosse tx3"                         : True,
+"leaf wetness"                         : False,
+"lux"                                  : False,
+"managed counter"                      : False,
+"percentage"                           : True,
+"pressure"                             : True,
+"rfxmeter counter"                     : False,
+"security panel"                       : True,
+"selector switch"                      : True,
+"setpoint"                             : True,
+"soil moisture"                        : False,
+"solar radiation"                      : False,
+"sound le vel"                         : False,
+"switch"                               : True,
+"text"                                 : True,
+"thb1 - bthr918"                       : True,
+"thb2 - bthr918n"                      : True,
+"thgn122/123/132, thgr122/228/238/268" : True,
+"tfa"                                  : True,
+"visibility"                           : True,
+"voltage"                              : True,
+"waterflow"                            : True,
+"weather station"                      : True,
+"weight"                               : False,
+"wtgr800"                              : True,
+}
+
 #####################################################################

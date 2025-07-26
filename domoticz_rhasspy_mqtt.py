@@ -3,8 +3,9 @@
 # Python Plugin for Rhasspy Domoticz integration
 #
 # Author:  marathon2010
-# Version: 0.1.42 (30 March 2025)
 #
+#####################################################################
+version_script = "1.0.6 (15Jul25)"
 #####################################################################
 import daemon
 import paho.mqtt.client as mqtt
@@ -17,7 +18,7 @@ from domoticz_rhasspy_functions import *
 def on_connect(mqttClient, userdata, flags, rc, properties):
     # Called when connected to MQTT broker.
     mqttClient.subscribe("hermes/intent/#", qos=1)
-    writeLog("Connected MQTT server. Waiting for intent.", logDebug)
+    writeLog("Connected MQTT server. Waiting for intent.\n", logDebug)
 
 def on_disconnect(mqttClient, userdata, flags, rc):
     # Called when disconnected from MQTT broker.
@@ -36,6 +37,7 @@ def on_message(mqttClient, userdata, msg):
     else:
         sentence = processDomoticz (capturedTopic[len(intentPrefix):].lower(), nlu_payload, scriptTypeMQ)
         site_id = nlu_payload["siteId"]
+        writeLog ("Sentence to speak on <" + site_id + ">", logDebug)
         mqttClient.publish("hermes/tts/say", json.dumps({"text": sentence, "siteId": site_id}))
     writeLog ("Intent finished processing <" + capturedTopic + "> and waiting new intent.\n", logInfo)
 #####################################################################
@@ -43,7 +45,7 @@ def on_message(mqttClient, userdata, msg):
 # Preparation
 #
 #####################################################################
-openLog(scriptTypeMQ)
+openLog(scriptTypeMQ, version_script)
 #####################################################################
 #
 # Main processing
