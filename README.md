@@ -211,8 +211,8 @@ Two methods can be implemented: 1) via Local Command script or 2) via MQTT servi
    - Unzip the ZIP file in the created folder.
 5. Go to folder (`cd Domoticz-Rhasspy-Plugin`).
 6. Make the domoticz_rhasspy_mqtt.py file executable (`chmod 755 pdomoticz_rhasspy_mqtt.py`). Same applies to domoticz_rhasspy_vars.py and domoticz_rhasspy_functions.py.
-7. Install module jmespath: `pip3 install jmespath`. This is required for searching in JSON structures.
-8. Step removed.
+7. Adjust the variable `pathnameMQ` in the` domoticz_rhasspy_vars.py` for the location of the `domoticz_rhasspy.log`.
+8. Install module jmespath: `pip3 install jmespath`. This is required for searching in JSON structures.
 9. Install module paho mqtt: `pip3 install paho-mqtt`. This is required for communicating with the MQTT server.
 10. Install module daemon: `pip3 install python-daemon`. This is required for running Rhasspy Domoticz MQTT script in background.
 11. Start the python script, for instance like next:
