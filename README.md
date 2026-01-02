@@ -96,6 +96,7 @@ Rhasspy will respond with the spoken text `humidity is 49 percent`.
 As from vs 3.0 the `speakpartialtext` functionality is integrated into the `speakresponse` tag (and `speakpartialtext` tag will be deprecated in a next version). 
 Bear in mind the blocks after the `speakresponse` tag are separated by a semi-colon (so `;`).
 In this way you can build you own reporting feedback to be spoken mixing fixed text and values from Domoticz.
+So for instance on requesting the temperature you could use `{speakresponse:temperature is;0;1;2;degrees}` which would result in `temperature is 11 point 1 degrees`.
 
 It is also possible to suppress the feedback of the actual state by a device. The German example of the kitchenlight reports the actual state.
 If you would amend the sentence to `(:){speakresponse:Der Zustand des Küchenlichts hat sich geändert}(:){speakstate:no}` no actual state retrieved from Domoticz would be spoken. 
