@@ -11,7 +11,7 @@ import requests
 import jmespath
 from domoticz_rhasspy_vars import *
 #####################################################################
-version = "3.3.18 (26Jul25)"
+version = "3.4.28 (28Nov25)"
 #####################################################################
 #
 # Global functions
@@ -129,9 +129,17 @@ def domoRequest(domoParms):
     return request_response
 
 def domoGetIDX(domoticz_device):
-    domoticz_idx = 0
-    # first try to translate the supplied device name to the value of a user variable
+    # check for friendly name device supplied, so xxxx;yyyy where xxxx is regular name and yyyy is friendly name
+    # try to translate the supplied device name to the value of a user variable
     # so user variables names are logical device names and will containt the actual device names
+    domoticz_idx      = 0
+    friendly_name     = False
+    if str(domoticz_device).count(";") > 0:
+        friendly_name = True
+    writeLog ("Friendly name supplied <" + str(friendly_name) + ">", logDebug)
+    devicelist        = domoticz_device.split(";",1)
+    domoticz_device   = devicelist [0]
+
     domoticz_result = domoRequest("getuservariables")
     if domoticz_result.ok:
         domoticz_usrvar = searchJSON("result[?Name=='" + domoticz_device + "'].Value", domoticz_result.json())
@@ -144,7 +152,11 @@ def domoGetIDX(domoticz_device):
     if domoticz_result.ok:    
         domoticz_idx = searchJSON("result[?name=='" + domoticz_device + "'].idx", domoticz_result.json())
         writeLog ("Device IDX <" + str(domoticz_idx) + "> (" + str(domoticz_device) + ")", logDebug)
-    return domoticz_idx
+
+    # friendly device name supplied?
+    if friendly_name:
+        domoticz_device = devicelist [1]
+    return domoticz_idx, domoticz_device
 
 def searchJSON(jmessearch, payload):
     foundJSONstring = str(jmespath.search(jmessearch, payload)).strip("[']")
@@ -182,13 +194,15 @@ def extractTexts(blocksSpeakResponse, blocksDomoticzValues, payload, scriptType)
 
     speakFullValue = True
     countBlocksDomoticzValues = len(blocksDomoticzValues)
-    writeLog("Speak response / Domoticz value / count " + str(blocksSpeakResponse) + " | " +  str(blocksDomoticzValues) + " | " + str(countBlocksDomoticzValues), logDebug)
+    writeLog("Speak response / Domoticz value / count = " + str(blocksSpeakResponse) + " | " +  str(blocksDomoticzValues) + " | " + str(countBlocksDomoticzValues), logDebug)
     sentenceToSpeak = ""
     for indexOrText in blocksSpeakResponse:
         if indexOrText.isdigit():
             if int(indexOrText) in range(0, countBlocksDomoticzValues):
-                sentenceToSpeak = sentenceToSpeak + " " + translateText (''.join(filter(str.isalnum, blocksDomoticzValues[int(indexOrText)])))
-                writeLog("Word id   <" + str(''.join(filter(str.isalnum, blocksDomoticzValues[int(indexOrText)]))) +">", logDebug)
+###                sentenceToSpeak = sentenceToSpeak + " " + translateText (''.join(filter(str.isalnum, blocksDomoticzValues[int(indexOrText)])))
+                sentenceToSpeak = sentenceToSpeak + " " + translateText (blocksDomoticzValues[int(indexOrText)])
+###                writeLog("Word id   <" + str(''.join(filter(str.isalnum, blocksDomoticzValues[int(indexOrText)]))) +">", logDebug)
+                writeLog("Word id   <" + str(blocksDomoticzValues[int(indexOrText)]) +">", logDebug)
                 speakFullValue = False
             else:
                 writeLog("Value id <"+ str(indexOrText) + "> outside Words list range <0-"+ str(countBlocksDomoticzValues) +">", logDebug)
@@ -230,56 +244,150 @@ def getLanguage (scriptType, payload):
     writeLog("Rhasspy language <" + toLanguage + ">", logDebug)
     return domoLanguage, toLanguage
 
-def processDomoticz (apiCommand, payload, scriptType):
+def validateDomoticz (payload, scriptType):
     writeLog ("Script type " + scriptType, logDebug)
+    response_status = 200
 
-    # capture the device delivered from Rhasspy and validate it exists in Domoticz by retrieving the IDX.
+    ### capture the device delivered from Rhasspy and validate it exists in Domoticz by retrieving the IDX.
     domoticz_device = searchJSON(tagListJSON ["device"] [scriptType], payload)
-    domoticz_IDX = domoGetIDX(domoticz_device)
+    domoticz_IDX, domoticz_device = domoGetIDX(domoticz_device)
     if domoticz_IDX == "":
         writeLog ("Device " + domoticz_device + " not found / not active", logError)
-        return ""
-    writeLog ("Domoticz API command " + apiCommand + " (" + domoticz_device + ")", logInfo)
-
-    # get language of Domoticz and Rhasspy
-    # JULY 2025 NOT REQUIRED AS DEEPL IS REPLACED BY SPECIFIC TRANSLATIONS
-    # domoLanguage, toLanguage = getLanguage(scriptType, payload)
+        response_status = 4001
+        return response_status, "", "", "", "", "", ""
 
     ### validate type and subtype can already be processed by the plugin.
     domoticz_result = domoRequest("getdevices&rid=" + domoticz_IDX)
     if not domoticz_result.ok:
         writeLog ("Device details " + domoticz_device + " not found", logError)
-        return ""
+        response_status = 4002
+        return response_status, "", "", "", "", "", ""
+
     domoticz_type    = searchJSON(resultJSON ["type"], domoticz_result.json()).lower()
     domoticz_subtype = searchJSON(resultJSON ["subtype"], domoticz_result.json()).lower()
     if not domoticz_type in domoTypesJSON.keys():
         writeLog ("Domoticz type " + domoticz_type + " not setup (to add to domoTypesJSON)", logError)
-        return ""
+        response_status = 4003
+        return response_status, "", "", "", "", "", ""
     if domoTypesJSON [domoticz_type] == False:
         writeLog ("Domoticz type " + domoticz_type + " not configured (domoTypesJSON false)", logError)
-        return ""
+        response_status = 4004
+        return response_status, "", "", "", "", "", ""
     if not domoticz_subtype in domoSubTypesJSON.keys():
         writeLog ("Domoticz subtype " + domoticz_subtype + " not setup (to add to domoSubTypesJSON)", logError)
-        return ""
+        response_status = 4005
+        return response_status, "", "", "", "", "", ""
     if domoSubTypesJSON [domoticz_subtype] == False:
         writeLog ("Domoticz subtype " + domoticz_subtype + " not configured (domoSubTypesJSON false)", logError)
-        return ""
+        response_status = 4006
+        return response_status, "", "", "", "", "", ""
     writeLog("Domoticz type/subtype validated", logDebug)
 
+    askForConfirmation = searchJSON(tagListJSON ["askconfirmation"] [scriptType], payload)
+    writeLog("Request confirmation before processing [" + askForConfirmation + "]", logDebug)
+
+    return response_status, domoticz_device, domoticz_IDX, domoticz_type, domoticz_subtype, domoticz_result, askForConfirmation
+
+def performDomoticz (apiCommand, payload, scriptType, domoticz_device, domoticz_IDX, domoticz_type, domoticz_subtype, domoticz_result):
+    writeLog ("Domoticz API command " + apiCommand + " (" + domoticz_device + ")", logInfo)
     ### update to do? if so also retrieve updated value.
     # perform update for switchlight types
     if apiCommand == "switchlight":
+        # update can be on/off: 'entity': 'state', 'value': {'kind': 'Unknown', 'value': 'Off'}
+        # but also can be a number: {'entity': 'rhasspy/number', 'value': {'kind': 'Number', 'value': 5}
+        # or a mix: {'entity': 'state', 'value': {'kind': 'Unknown', 'value': '0'}
         domoticz_state = searchJSON(tagListJSON ["state"] [scriptType], payload)
-        domoticz_result = domoRequest(apiCommand + "&idx=" + domoticz_IDX + "&switchcmd=" + domoticz_state)
-        if not domoticz_result.ok:
-            writeLog("Device update " + domoticz_device + " failed", logError)
+        if domoticz_state == "":
+            domoticz_state = searchJSON(tagListJSON ["number"] [scriptType], payload)
+            if domoticz_state != "":
+                domoticz_state = "Set%20Level&level=" + domoticz_state 
+                writeLog("Device number [" + domoticz_state + "]", logInfo)
+        else:
+            # validate state is digit, so is set level command
+            if domoticz_state.isdigit():
+                domoticz_state = "Set%20Level&level=" + domoticz_state 
+            writeLog("Device state [" + domoticz_state + "]", logInfo)
+        if domoticz_state != "":
+            domoticz_result = domoRequest(apiCommand + "&idx=" + domoticz_IDX + "&switchcmd=" + domoticz_state)
+            if not domoticz_result.ok:
+                writeLog("Device update " + domoticz_device + "(" + domoticz_state + ") failed", logError)
+                return ""
+        else:
+            writeLog("Device update " + domoticz_device + " no update value retrieved", logError)
             return ""
     # perform update for setpoint types
     if apiCommand == "setsetpoint":
-        domoticz_temp  = searchJSON(tagListJSON ["setpoint"] [scriptType], payload)
+        domoticz_temp  = searchJSON(tagListJSON ["setpoint"] [scriptType], payload).replace(" ", "")
         domoticz_result = domoRequest(apiCommand + "&idx=" + domoticz_IDX + "&setpoint=" + domoticz_temp)
         if not domoticz_result.ok:
             writeLog("Setpoint update " + domoticz_device + " failed", logError)
+            return ""
+    # perform update for text types
+    if apiCommand == "udevice":
+        writeLog("Before compile", logDebug)
+        entity_expr = jmespath.compile("slots[?entity=='setdomoticzvalue'].value.value | [0]")
+        slot_expr = jmespath.compile("slots[?slotName=='setdomoticzvalue'].value.value | [0]")
+        writeLog("Before entity result", logDebug)
+        result = entity_expr.search(payload)
+        writeLog("After entity result", logDebug)
+        domoticz_text = "niet gevonden"
+        writeLog("Check entity result", logDebug)
+        if result:
+            domoticz_text = result
+        else:
+            writeLog("Before slot result", logDebug)
+            result = slot_expr.search(payload)
+            writeLog("Check slot result", logDebug)
+            if result:
+                domoticz_text = result
+        writeLog("Result [" + domoticz_text + "]", logDebug)
+
+
+
+#####        expression = jmespath.compile(
+#####                        "slots[?entity=='setdomoticzvalue'].value.value[0] || "
+#####                        "slots[?slotName=='setdomoticzvalue'].value.value[0] || "
+#####                        "'no setdomoticzvalue found'"
+#####                        )
+#####        writeLog("After compile", logDebug)
+#####        domoticz_text = expression.search(payload)
+#####        writeLog("After expression [" + str(domoticz_text) + "]", logDebug)
+
+
+### contains(join('; ',slots[*].slotName),'setdomoticzvalue') TRUE dan komt dit voor (jmespath query)
+
+### slots[*].slotName geeft de lijst van slots, bv:
+
+### [
+###   "device",
+###   "setdomoticzvalue;domoticz/grocery",
+###   "speakresponse",
+###   "askconfirmation"
+### ]
+
+### slots[*].entity geeft de lijst van entities, bv:
+
+### [
+###   "device",
+###   "domoticz/grocery",
+###   "speakresponse",
+###   "askconfirmation"
+### ]
+
+
+### lees regel voor regel slotName array.
+### als slotNane = setdomoticzvalue dan bepaal slot id (in voorbeeld de tweede regel, dus waarde 1).
+### als id een waarde heeft, dan bepaal entity value.value van de regel (id). in voorbeeld domoticz/grocery
+### 
+
+### haal dan domoticz/grocery.value.value op: slots[?entity=='domoticz/grocery'].value.value
+
+### resultaat is Albert Heijn Pure Hagelslag
+
+###        domoticz_text  = searchJSON(tagListJSON ["setdomoticzvalue"] [scriptType], payload)
+        domoticz_result = domoRequest(apiCommand + "&idx=" + domoticz_IDX + "&nvalue=0&svalue=" + domoticz_text)
+        if not domoticz_result.ok:
+            writeLog("Device update " + domoticz_device + " failed", logError)
             return ""
     # perform a getdevices to confirm the actual status of the device after an update request
     # and would be that all intents will result in a getdevices request whatever intent is defined.

@@ -5,7 +5,7 @@
 # Author:  marathon2010
 #
 #####################################################################
-version_vars = "1.2.17 (26Jul25)"
+version_vars = "1.3.0 (4Nov25)"
 #####################################################################
 import os
 import sys
@@ -27,6 +27,7 @@ logDebug            = "DEBUG"       # show logmessage as debug
 logError            = "ERROR"       # show logmessage as error
 logInfo             = "INFO"        # show logmessage as info
 logStatus           = "STATUS"      # show logmessage as status
+pending_action      = {}            # used for dialogue processing
 
 # scriptType is 1) LocalCommand or 2) MQTT defined in calling script.
 # LocalCommand implies script called from Intent Handling in Rhasspy, so JSON file communication
@@ -37,9 +38,25 @@ pathnameLC          = sys.argv[0][:sys.argv[0].rfind("/")]
 ###pathnameMQ          = os.getcwd()
 
 tagListJSON = {  # variables that can be used in the sentences, how to retrieve from the slot.
+  "askconfirmation" : {
+    scriptTypeLC : "slots.askconfirmation",
+    scriptTypeMQ : "slots[?entity=='askconfirmation'].value.value"
+  },
   "device" : {
     scriptTypeLC : "slots.device",
     scriptTypeMQ : "slots[0].value.value"
+  },
+  "number" : {
+    scriptTypeLC : "slots.rhasspy/number",
+    scriptTypeMQ : "slots[?entity=='rhasspy/number'].value.value"
+  },
+  "openquestion" : {
+    scriptTypeLC : "slots.openquestion",
+    scriptTypeMQ : "slots[?entity=='openquestion'].value.value"
+  },
+  "setdomoticzvalue" : {
+    scriptTypeLC : "slots.setdomoticzvalue",
+    scriptTypeMQ : "slots[?entity=='setdomoticzvalue'].value.value"
   },
   "setpoint" : {
     scriptTypeLC : "slots.setpoint",
@@ -61,6 +78,14 @@ tagListJSON = {  # variables that can be used in the sentences, how to retrieve 
     scriptTypeLC : "slots.state",
     scriptTypeMQ : "slots[?entity=='state'].value.value"
   },
+}
+
+mqttJSON = {       # define the MQTT commands.
+  "continue"       : "hermes/dialogueManager/continueSession",
+  "dialogue"       : "hermes/dialogueManager",
+  "end"            : "hermes/dialogueManager/endSession",
+  "intent"         : "hermes/intent",
+  "say"            : "hermes/tts/say",
 }
 
 resultJSON = {     # define in which part of the Domoticz API JSON structure the value is defined.
