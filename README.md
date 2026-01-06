@@ -31,7 +31,7 @@ Every intent that needs to be interpreted by Domoticz needs to start with `dz` s
 is not case sensitive (everything will be converted to lowercase by the plugin).
 
 Currently supported API commands of Domoticz (see for details https://wiki.domoticz.com/Domoticz_API/JSON_URL's and the appendix chapter at the end of this readme document):
-  1. [dzswitchlight] - So on/off open/close switches.
+  1. [dzswitchlight] - So on/off open/close switches or select a value of a selector switch.
   2. [dzsetsetpoint] - Update setpoint device like heating thermostat.
   3. [dzgetsecstatus] - Retrieve security status.
   4. [dzgetdevices] - So actual value of a Domoticz device, report the value.
@@ -43,12 +43,13 @@ Besides the sentence rules of Rhasspy every sentence related to the Domoticz int
 
 Let's assume Domoticz is running in English language and review the German kitchenlight example. This would be configured next:
 
-**`mach das Küchenlicht`{device:Licht} (an:on | aus:off){state}(:){speakresponse:`Das Licht in der Küche ist`}**
+**`mach das Küchenlicht`{device:Licht;die Lampe} (an:on | aus:off){state}(:){speakresponse:`Das Licht in der Küche ist`}**
 
 - `mach das Küchenlicht`
   * This is the text to be spoken by the user.
-- {device:Licht}
+- {device:Licht;die Lampe}
   * The devicename in Domoticz is `Licht`, this is case sensitive and should match exactly. If not, the plugin is not able to find the corresponding device IDX.
+  * As from vs 3.4 possibility for a friendly name, in this case `die Lampe`. This will be used for dialogues (see below).
 - (an:on | aus:off){state}
   * The state into which the device is to be updated. In this case spoken text by the user can be either `an` or `aus`.
   * So the actual spoken text by the user can be `mach das Küchenlicht an`.
@@ -61,7 +62,7 @@ Next would be a valid setup within Rhasspy of the sentence.ini file:
 
     [dzSwitchLight]
 
-    mach das Küchenlicht`{device:Licht} (an:on | aus:off){state}(:){speakresponse:Das Licht in der Küche ist}
+    mach das Küchenlicht`{device:Licht;die Lampe} (an:on | aus:off){state}(:){speakresponse:Das Licht in der Küche ist}
 
     [GetTime]
 
@@ -115,6 +116,31 @@ The slot `domoticz/temperature` would look like this:
 
 So the request `what is inside temperature` will be parsed in Domoticz and spoken text will be `the temperature is 19 degrees`.
 
+### 4.1.6 Dialogues
+As from vs 3.4 simple dialogues are possible. This works for the MQTT version only however. Next example (in Dutch - translated to English for clarification purposes) to explain.
+
+**zet de (thermostaat | verwarming) op{device:HeatingTemperature;thermostaat}(12..22 [punt:. 0..9]){setpoint}(:){speakresponse:verwarming staat op;0;1;2}(:){askconfirmation:yes}**
+
+The Domoticz device is `HeatingTemperature` with a friendly name `thermostaat` (English: `thermostat`). 
+Question to Rhasspy can be something like `zet de verwarming op 18 punt 4` (English: `put the heating to 18 point 4`).
+The tag `askconfirmation` will initiate the dialogue, values can be `yes` or `no`. In the example value is yes, this will initiate the dialoque.
+Rhasspy will ask `bedoel je thermostaat` (English `do you mean thermostat`) where you can answer with self configured answers.
+
+In the sentence.ini file next need to be added:
+    
+    [confirmyes]
+    (ja|akkoord|doorgaan|yes)
+    
+    [confirmno]
+    (nee|stop|stoppen|no)
+
+Tags between brackets (so `[confirmyes]` and `[confirmno]`) are mandatory. The values can be configured, these are the answers that Rhasspy will accept.
+
+Two entries in the specific translation json (see below) can be added for dialogue management to speak in a specific language.
+
+    "do you mean"                   : "bedoel je",
+    "request cancelled for"         : "verzoek afgebroken voor",
+
 ## 4.2 Specific translations
 The JSON structure `domoticz_rhasspy_translations.json` will be processed once the integration is started. The file contains mapping between results in Domoticz and results to be send back to Rhasspy.
 Example of the structure (so English to Dutch translation - for simplicity the {} were omitted):
@@ -128,6 +154,17 @@ Example of the structure (so English to Dutch translation - for simplicity the {
 
 When the state of a device is captured as `closed` the text send to Rhasspy to be spoken will be `gesloten`. The content of the JSON structure may be adjusted for your own needs. 
 Bear in mind that after changing the content of the JSON file, the integration is to be stopped and to be restarted in order to take changes into effect.
+
+As from vs 3.4 some main errors can be spoken by Rhasspy by configuring the JSON structure `domoticz_rhasspy_translations.json`.
+English translations are defined below, but can be defined in your own language used by Rhasspy.
+
+      "error4001"                     : "device not found or inactive",
+      "error4002"                     : "device details not found",
+      "error4003"                     : "type not defined",
+      "error4004"                     : "type not configured",
+      "error4005"                     : "subtype not defined",
+      "error4006"                     : "subtype not configured",
+
 
 ## 4.3 Typical Setup Rhasspy
 My current setup is `Base-Satellite` (Base Rhasspy under Docker on NAS and Satellite Rhasspy under Docker on RPi3).
@@ -164,6 +201,8 @@ Bear in mind, this is `optional` functionality. You can still use the actual dev
 Two methods can be implemented: 1) via Local Command script or 2) via MQTT service script (as from vs3).
 
 ## 6.1 Local Command Script
+
+Vs 3.4 is not validated, so last stable is vs 3.3.
 
 ### A. Python program
 1. Open a `PuTTY` session.
@@ -296,6 +335,31 @@ Next is an example of the `domoticz_rhasspy.log` file with the `--debug` option 
     26-Jul-25 23:13:07.209506 - DEBUG - Sentence to speak on <sat1>
     26-Jul-25 23:13:07.209727 - INFO - Intent finished processing <dzGetDevices> and waiting new intent.
 
+# 7 SCRIPT FOR START / STOP / MONITOR
+
+The LUA script (`rhasspy_integration.lua`) is an example how to start, stop and monitor the Rhasspy Integration. Next steps are to do:
+
+1. Create a dummy on/off switch device in Domoticz. Mine is called 'Rhasspy Integratie' (just for reference).
+2. Create next user variables in Domoticz:
+
+    | User Variable | Example | Comment |
+    | :--- | :--- | :--- |
+    |DomoticzServer|http://192.168.100.100:8084|
+    |DomoticzUser|user|
+    |DomoticzPassword|passwd|
+    |DomoticzScriptPath|/opt/domoticz/userdata/scripts/python/|path were the Rhasspy Python scripts are placed|
+    |MQTTServer|localhost:1883|
+    |RhasspyIntegration|Rhasspy Integratie|the device in step 1|
+    |RhasspySayMQTT|hermes/tts/say|fixed value|
+    |RhasspySatellite|sat1|your Rhasspy satellite|
+
+4. Place the LUA script in the DzVents scripts folder.
+5. Edit the LUA scripts:
+  - Adjust the device name (see step 1) in line 70: , on = {devices = {'Rhasspy Integratie'
+  - Activate the script (change value false to true in line 69).
+
+Note: script is reworked from my production environment. That is the reason why it looks more complex than really necessary.
+
 # Appendix - Device status details
 List is based on https://wiki.domoticz.com/Developing_a_Python_plugin#Available_Device_Types
 
@@ -312,7 +376,7 @@ List is based on https://wiki.domoticz.com/Developing_a_Python_plugin#Available_
 | Current |  | ✅ |  ❌ |
 | General  |  | ✅ | 💡 |
 | Humidity |  | 💡 |  ❌ |
-| Light/Switch | Selector Switch | ✅ |  💡 |
+| Light/Switch | Selector Switch | ✅ |  ✅ |
 | Light/Switch | Switch | ✅ | ✅ |
 | Lighting 2 |  | See Light/Switch |  See Light/Switch |
 | Lux  |  | 💡 |  ❌ |
