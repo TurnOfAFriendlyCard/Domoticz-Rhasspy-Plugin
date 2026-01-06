@@ -1,3 +1,9 @@
+## v3.4 (jan 2026) - MQTT version update only:
+- Added yes/no dialogue (confirming what Rhasspy understood).
+- Added friendly name for Domoticz devices.
+- Added selector switch update.
+- Added errors to be spoken by Rhasspy.
+- Added scripts for start/stop/status Rhasspy integration. 
 ## v3.3 (jul 2025):
 - Added security type Domoticz (alarm activation).
 - Added supported types Domoticz (see table appendix).
